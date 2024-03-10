@@ -4,13 +4,14 @@ This module contains the implementation of the Restricted Boltzmann Machine
 learn a probability distribution over its set of inputs.
 """
 import os
-import argparse
+import argparse  # for argument parsing
 import numpy as np  # for numerical operations
 import matplotlib.pyplot as plt  # for plotting the energy graph
 from layers import HiddenLayer, VisibleLayer
 import networkx as nx  # for plotting the network nicely
 from DataSet import DataSet
-# for argument parsing
+from formulas import get_probability
+
 
 NUMBER_OF_HIDDEN_UNITS = 16
 CONSOLE_LOGGING = True
@@ -87,25 +88,6 @@ class RBM:
         plt.show()
         return ax
 
-    def get_probability(self, h=None, v=None):
-        """
-        calculate the probability of the hidden layer given the visible layer
-        using the formula:
-        p(hj = 1|v) = 1 / (1 + exp(-Σ(vi * wji) - bj))
-
-        args:
-        - h: hidden layer units
-        - v: visible layer units
-        """
-        # Vectorized calculation of hidden unit probabilities to improve efficiency
-        b = self.hidden_layer.bias
-        w = self.synapses.weights
-        if v is None:
-            v = self.visible_layer.units
-        # Vectorized computation of the activation energy for hidden units
-        activation_energy = np.dot(v, w) + b
-        # might cause nan or overflow
-        return 1 / (1 + np.exp(-activation_energy))
 
     def train(self, epochs=128, learning_rate=1):
         """
@@ -128,7 +110,8 @@ class RBM:
                 self.visible_layer.lock_units()  # lock the input and output units
 
                 # Calculate hidden probabilities and sample hidden states
-                hidden_probs = self.get_probability()
+                hidden_probs = get_probability(
+                    v=self.visible_layer.units, w=self.synapses.weights, b=self.hidden_layer.bias)
                 hidden_states = np.random.binomial(1, hidden_probs)
 
                 # Positive phase value represent the outer product
@@ -146,7 +129,7 @@ class RBM:
                 visible_states = np.random.binomial(1, visible_probs)
 
                 # Recalculate hidden states from sampled visible units
-                hidden_probs_neg = self.get_probability(v=visible_states)
+                hidden_probs_neg = get_probability(v=visible_states, w=self.synapses.weights, b=self.hidden_layer.bias)
                 hidden_states_neg = np.random.binomial(1, hidden_probs_neg)
 
                 # Negative phase value represent the outer product

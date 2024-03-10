@@ -116,6 +116,8 @@ The RBM is configured for the Iris dataset as follows:
 - **Output Neurons**: 3 neurons, one per dataset class.
 - **Hidden Neurons**: 16 neurons, an empirically determined number based on experimental outcomes.
 
+Note that the input and output neuron are the `visible units` ($\vec{v} = (v_1,...,v_{n=15})$) and the `hidden units` are the hidden neurons ($\vec{h} = (h_1,...,h_{m=16})$).
+
 ### Layer Classes and Hierarchy
 
 The network employs two primary layer types, managed through inheritance:
@@ -127,7 +129,7 @@ The network employs two primary layer types, managed through inheritance:
 
 ![RBM Network Structure](images/bfs_network.png)
 
-The diagram details the network's composition, including hidden neurons (`h_0` to `h_15`), input neurons (`v_0` to `v_11`), and output neurons (`v_12` to `y_14`), with 0-based indexing for clarity and consistency.
+The diagram details the network's composition, including hidden neurons ($h_0$ to $h_{15}$), input neurons ($v_0$ to $v_{11}$), and output neurons ($v_{12}$ to $y_{14}$), with 0-based indexing for clarity and consistency.
 
 ### Important Note
 
@@ -135,27 +137,29 @@ An indexing discrepancy led to a significant bug affecting class classification 
 
 ### Energy function
 
-The energy function of the network is implemented here:
-
 ```python
-
-    def energy(self, visible_units, hidden_units):
-        """
-        calculate the energy of the model using the formula:
-        -Σ(vi * a) - Σ(hj * b) - Σ(Σ(vi * wji) * hj)
-
-        args:
-        - visible_units: the visible layer units
-        - hidden_units: the hidden layer units
-        """
-        visible_bias = self.visible_layer.bias
-        hidden_bias = self.hidden_layer.bias
-        weights = self.synapses.weights
-        return -np.dot(visible_bias, visible_units)\
-            - np.dot(hidden_bias, hidden_units) - \
-            np.dot(visible_units.T @ weights,
-                   hidden_units)  # note the @ operator
+def energy(self, visible_units, hidden_units):
+    """
+    calculate the energy of the model using the formula:
+    -Σ(vi * a) - Σ(hj * b) - Σ(Σ(vi * wji) * hj)
+    args:
+    - visible_units: the visible layer units
+    - hidden_units: the hidden layer units
+    """
+    visible_bias = self.visible_layer.bias
+    hidden_bias = self.hidden_layer.bias
+    weights = self.synapses.weights
+    return -np.dot(visible_bias, visible_units)\
+        - np.dot(hidden_bias, hidden_units) - \
+        np.dot(visible_units.T @ weights,
+               hidden_units)  # note the @ operator
 ```
+
+The energy function of the network is thus:
+
+$E(\vec{v}, \vec{h}) = -\sum_{i=1}^{15} v_i a_i - \sum_{j=1}^{16} h_j b_j - \sum_{i=1}^{15} \sum_{j=1}^{16} J_{ij} v_i h_j$
+
+Where:
 
 ### Initialization Process
 
@@ -178,7 +182,31 @@ Key Features:
 
 #### Synaptic Initialization
 
-Synapses and biases are initialized using a random number generator from the numpy library, with values ranging between -0.1 and 0.1, laying the foundation for diverse neural connections.
+Before runing the classification the following steps must preceed:
+
+1. Define the energy function with suitable parameters.
+2. Lock the input units as required.
+3. Initialize the other units with random values, and choose big $T$ to allow the network to converge.
+
+The synapses and biases are initialized using the `train` method, which is called from the `RBM` class. The process is as follows:
+
+1. **Synaptic Initialization**: The weights and biases are initialized using a random number generator from the numpy library, with values ranging between -0.1 and 0.1, laying the foundation for diverse neural connections.
+2. **Choose the learning rate**: The learning rate is set to 0.1, a value that has been empirically determined to facilitate efficient learning and convergence.
+
+Than the following steps are reapeated until the network converges, or until a maximum number of iterations is reached:
+
+1. Pick a random instance $\vec{v} = (v_1,...,v_15)$ from the dataset.
+
+2. Calculate the probability $P_k$ for every hidden unit $h_k$ using the formula: $P_k = \frac{1}{1 + e^{-\sum_{i=1}^{15} v_i w_{ik} - b_k}}$. Note that that it doesnt deapend on the other hidden units - this is the reason for the name `Restricted` Boltzmann Machine, and also why it enables parallel processing.
+
+3. Initialize the classification algorithm with $\vec{v} = (v_1,...,v_{15})$ and perform a single step of the Gibbs sampling algorithm to get network state $(\vec{h}(1), \vec{v}(1))$. This is done without locking the input units.
+
+4. Update the weights and biases using the contrastive divergence algorithm:
+   - $a_i^{new} = a_i + \eta(v_i - v_i{(1)})$
+   - $b_j^{new} = b_j + \eta(P_j - h_j{(1)})$
+   - $J_{ij}^{new} = J_{ij} + \eta(v_i P_j - v_i{(1)} h_j{(1)})$
+
+5. Repeat the previous steps until the network converges, or until a maximum number of iterations is reached.
 
 ## Utilizing the Network
 
