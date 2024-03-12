@@ -116,7 +116,7 @@ The RBM is configured for the Iris dataset as follows:
 - **Output Neurons**: 3 neurons, one per dataset class.
 - **Hidden Neurons**: 16 neurons, an empirically determined number based on experimental outcomes.
 
-Note that the input and output neuron are the `visible units` ($\vec{v} = (v_1,...,v_{n=15})$) and the `hidden units` are the hidden neurons ($\vec{h} = (h_1,...,h_{m=16})$).
+Note that the input and output neuron are the `visible units` ( $\vec{v} = (v_1,...,v_{n=15})$ ) and the `hidden units` are the hidden neurons ( $\vec{h} = (h_1,...,h_{m=16})$ ).
 
 ### Layer Classes and Hierarchy
 
